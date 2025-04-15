@@ -74,6 +74,7 @@ void delay_T(unsigned int ms){
  * - 第一行：波形发生具体形状选择
  * - 第二行：具体功能选择
  */
+/*
 void keyDetection_bjy(){
     int i;
     unsigned int keyEvent = false;      // 按键事件发生标志
@@ -109,7 +110,7 @@ void keyDetection_bjy(){
         }
     } 
 }
-
+*/
 /**
  * 向74HC595发送一个字节数据
  */
