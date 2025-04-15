@@ -11,11 +11,11 @@ void realtime_mode(){
     unsigned int address_6264 = 0;
     while(address_6264 <= 0x1fff){  // 6264存储
         init_ad();
-        ADC_CONTR |= 0X08;  //start
+        ADC_CONTR |= 0X08;  //start ADC工作
         while(!(ADC_CONTR & 0x10)); // 等待转换完成的flag
         ad_result = ADC_RES;
-        saveAD_6264(address_6264, ad_result);
-        realout_0832_1(ad_result);    //将转换完成之后的数据实时输出 OUTPUT1 
+        writeRAM_6264(address_6264, ad_result);
+        realtime_out_0832(1);    //实时输出ad_in OUTPUT 1 
         address_6264 ++;        
     }
 }
@@ -35,8 +35,24 @@ void generator_mode(){
             break;
     }
 }
+
+/**
+ * 波形回放
+ * - 保留realtime_mode下的实时输出部分
+ * - 6264存储器控制信号配置，改为波形回放
+ */
 void recall_mode(){
-    
+    unsigned int address_6264 = 0;
+    while(address_6264 <= 0x1fff){  // 在6264范围内寻址，保障recall不溢出
+        init_ad();
+        ADC_CONTR |= 0X08;  //start ADC工作
+        while(!(ADC_CONTR & 0x10)); // 等待转换完成的flag
+        P0 = ADC_RES;
+        realtime_out_0832(1);    //实时输出ad_in OUTPUT 1
+        readRAM_6264(address_6264);
+        realout_0832(2); // 将6264中的数据输出 OUTPUT 2
+        address_6264 ++;        
+    }
 }
 void measure_mode(){
 
