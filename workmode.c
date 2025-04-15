@@ -9,12 +9,13 @@
 void realtime_mode(){
     unsigned char ad_result;
     unsigned int address_6264 = 0;
-    while(address_6264 <= 0x1fff){
+    while(address_6264 <= 0x1fff){  // 6264存储
         init_ad();
         ADC_CONTR |= 0X08;  //start
         while(!(ADC_CONTR & 0x10)); // 等待转换完成的flag
         ad_result = ADC_RES;
         saveAD_6264(address_6264, ad_result);
+        realout_0832_1(ad_result);    //将转换完成之后的数据实时输出 OUTPUT1 
         address_6264 ++;        
     }
 }

@@ -66,4 +66,4 @@ extern void measure_mode();
 
 extern void init_ad();// ad
 extern void saveAD_6264(unsigned int address, unsigned char data);
-
+extern void realout_0832_1(unsigned char data);
