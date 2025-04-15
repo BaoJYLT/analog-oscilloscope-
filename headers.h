@@ -28,7 +28,8 @@
 // 地址数据复用
 #define ADDR_HIGH P2
 #define ADDR_LOW P0
-
+#define WRITE_RAM 1
+#define READ_RAM 2  //关于6264RAM的 读写控制信号宏定义只适用于区分，大概是先写后读
 
 sbit KEY1 = P3^4;
 sbit KEY2 = P3^5;
@@ -54,16 +55,23 @@ sfr AUXR1 = 0xa2;
 extern unsigned int workmode;  //工作模式
 extern unsigned int submode ;   //波形发生模式
 extern volatile bit Timer0Flag ;
+
 extern void initIE();
 extern void initTimer0();
 extern void interruptTimer0() interrupt 0xb;
 extern void delay_T(unsigned int ms);
+// extern void sendByte_595(unsigned char byte_595);
+// extern void keyDetection();
+// extern void modeSelection();
 
 extern void realtime_mode();// mode
 extern void generator_mode();
 extern void recall_mode();
 extern void measure_mode();
+// extern void default_mode();
 
 extern void init_ad();// ad
-extern void saveAD_6264(unsigned int address, unsigned char data);
-extern void realout_0832_1(unsigned char data);
+extern void writeRAM_6264(unsigned int address, unsigned char data);
+// extern void readRAM_6264(unsigned int address,unsigned char data);
+extern void realtime_out_0832(unsigned char outputNum);
+extern void readRAM_6264(unsigned int address);
