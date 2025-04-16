@@ -24,7 +24,7 @@ volatile bit Timer0Flag = 0;
 void initIE(){
     EA = 1;
     //ES = 1;
-    ET1 = 1;//其他定时
+    ET1 = 1;//扫描定时
     EX1 = 0;
     ET0 = 1;//按键消抖定时
     EX0 = 0;
@@ -48,11 +48,30 @@ void initTimer0(){
 /**
  * T0定时器中断执行程序
  */
-void interruptTimer0() interrupt 0xb{
+void interruptTimer0() interrupt 0x0b{
     // 执行T0定时结束后的中断——wait？
     Timer0Flag = TF0;
     TF0 = 0;
 }
+
+/**
+ * 整个函数keydetection基于T1，查询中断
+ */
+void initTimer1(){
+    TMOD &= 0x0f;
+    TMOD |= 0b00100000; //8位可重装载
+    TH1 = 0x06;//  250us
+    TL1 = 0x06;
+    TR1 = 1;
+}
+/**
+ * T1定时器中断执行程序
+ */
+void interruptTimer1() interrupt 0x1b{
+    TF1 = 0;
+    keyDetection();
+}
+
 /**
  * 延时
  * - T：延时时长 
@@ -192,7 +211,17 @@ void keyDetection(){
         if (1 <= keyNum && keyNum <= 4){
             submode = keyNum;
         }
+    }
+    // 工作模式切换 + 测量对象选择
+    else if (workmode == MEASURE){
+        if (keyNum == 2){
+            submode = MEASUREFREQ;
+        }
+        else{
+            submode = MEASUREAMP;
+        }
     } 
+    modeSelection();
 }
 
 /**
@@ -232,10 +261,8 @@ void modeSelection(){
 void submodeSelection(unsigned int keyNum){
 
 }
-void initSCOM(){
 
-}
-
-void initSMOD(){
-
-}
+/*
+void initSCOM(){}
+void initSMOD(){}
+*/

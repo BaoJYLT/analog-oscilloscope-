@@ -80,3 +80,165 @@ void readRAM_6264(unsigned int address){
     delay_T();
     RD = 1;
 }
+
+void measure_parameters(){
+    typedef enum{ FALLING, RISING} SingnalState;
+    unsigned short Sig_data, Sig_pre_data;
+    unsigned short Sig_highest, Sig_lowest;
+    unsigned short Sig_amp, Sig_freq, Sig_Period;
+    SignalState Sig_trend = RISING;
+    static unsigned char stable_count = 0;
+    unsigned int measure_timer =  0;
+    // 初始化 得到转换后的一个字节
+    if(workmode == MEASURE){ //【尚不确定需要while循环，应该是在时间中断里面不断被keydetection调用，可能不需要这个循环】
+        measure_timer ++;
+        init_ad();
+        ADC_CONTR |= 0X08;  //start ADC工作
+        while(!(ADC_CONTR & 0x10)); // 等待转换完成的flag
+        Sig_pre_data = Sig_data;
+        Sig_data = ADC_RES;
+
+        if((Sig_data > Sig_pre_data) && (Sig_trend == FALLING)){
+            if(stable_count == 0){
+                Sig_lowest = Sig_data;
+            }
+            if(++ stable_count >= 5){
+                Sig_trend = RISING;
+                stable_count = 0;
+                Sig_freq = 2000 / measure_timer;//需要根据我们的采样率重新设计
+                measure_timer = 0;
+            }
+        }else if((Sig_data < Sig_pre_data) && (Sig_trend == RISING)){
+            if(stable_count == 0){
+                Sig_highest = Sig_data;
+            }
+            if(++ stable_count >= 5){
+                Sig_trend = FALLING;
+                stable_count = 0;
+                Sig_amp = (int)(Sig_highest - Sig_lowest);  
+            }
+        }
+        Sig_pre_data = Sig_data;
+
+       /*
+        
+        if (Sig_data > Sig_highest){
+            Sig_highest = Sig_data;
+        }
+        if (Sig_data < Sig_lowest){
+            Sig_lowest = Sig_data;
+        }
+        Sig_amp = Sig_highest - Sig_lowest;
+        // 【需要与基准电压进行对比转换，结合数据手册】 
+        
+        if ((Sig_data - Sig_pre_data < SIGNAL_JITTER_THRESHOLD) || 
+            (Sig_pre_data - Sig_data < SIGNAL_JITTER_THRESHOLD)){    // 信号抖动处理
+            stableCount++;
+        }else{
+            stableCount = 0;    //stableCount用于记录稳定count的数量
+        }
+
+        if (stableCount > 5){
+            if(Sig_trend == RISING){
+                if(Sig_data < Sig_pre_data){
+                    Sig_trend = FALLING;
+                    Sig_Period = getTime() - Sig_last_Time;
+                    Sig_freq = 1000 / Sig_Period;
+                    Sig_last_time = getTime();
+                }
+            }else if(Sig_trend == FALLING){
+                if(Sig_data > Sig_pre_data){
+                    Sig_trend = RISING;
+                }
+            }
+        }
+        
+        
+        if (Sig_trend == RISING){
+            if (Sig_data > Sig_pre_data){
+                if (stableCount == 0){
+                    Sig_lowest = Sig_data;
+                    // 上升沿开始时间
+                }
+                if (++stableCount >= 5){ // 5个采样点的稳定状态
+                    Sig_highest = Sig_data;
+                    Sig_trend = FALLING; // 转换为下降沿
+                    // 上升沿结束时间
+                    Sig_Period = 2 * (Sig_highest - Sig_lowest);
+                    Sig_amp = Sig_highest - Sig_lowest; 
+                    Sig_freq = 1 / Sig_Period; // 频率计算
+                }
+            }
+            else{ // 极值点
+                stableCount = 0;
+            }
+        }
+        else{//FALLING
+            if (Sig_data < Sig_pre_data){
+                if (stableCount == 0){
+                    Sig_highest = Sig_data;
+                    // 下降沿开始时间
+                }
+                if (++stableCount >= 5){ // 5个采样点的稳定状态
+                    Sig_lowest = Sig_data;
+                    Sig_trend = RISING; // 转换为上升沿
+                    // 下降沿结束时间
+                    Sig_Period = 2 * (Sig_highest - Sig_lowest);
+                    Sig_amp = Sig_highest - Sig_lowest; 
+                    Sig_freq = 1 / Sig_Period; // 频率计算
+                }
+            }
+            else{ // 极值点
+                stableCount = 0;
+            }
+        }
+    }
+    // 用一个变量返回两个值
+    return Sig_freq; // 频率计算
+    // 是否需要设置输入参数，选择输结果；还是返回数组？？
+    */
+}
+
+/**
+ * 数码管显示
+ * display_digits();
+ * 
+ */
+void display_digits(){
+    
+}
+
+ /**
+  * 波形发生查表
+  */
+ const unsigned char code sinWaveTable[WAVE_TABLE_LEN] = {
+    128,136,143,150,158,165,172,179,185,191,197,202,207,211,215,218,220,222,223,224,
+    224,224,223,222,220,218,215,211,207,202,197,191,185,179,172,165,158,150,143,136,
+    128,120,113,106, 98, 91, 84, 77, 71, 65, 59, 54, 49, 45, 41, 38, 36, 34, 33, 32,
+     32, 32, 33, 34, 36, 38, 41, 45, 49, 54, 59, 65, 71, 77, 84, 91, 98,106,113,120
+  };
+  
+  const unsigned char code triWaveTable[WAVE_TABLE_LEN] = {
+    // 前50个线性上升，后50个线性下降
+    0,5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,
+    100,105,110,115,120,125,130,135,140,145,150,155,160,165,170,175,180,185,190,195,
+    200,205,210,215,220,225,230,235,240,245,
+    250,245,240,235,230,225,220,215,210,205,200,195,190,185,180,175,170,165,160,155,
+    150,145,140,135,130,125,120,115,110,105,100,95,90,85,80,75,70,65,60,55,50,45,40,35,30,25,20,15,10,5
+  };
+  
+  const unsigned char code rectWaveTable[WAVE_TABLE_LEN] = {
+    // 前半为高电平，后半为低电平
+    [0 ... 49] = 255,
+    [50 ... 99] = 0
+  };
+  
+  const unsigned char code sawWaveTable[WAVE_TABLE_LEN] = {
+    // 线性上升
+    0,3,5,8,11,13,16,18,21,23,26,28,31,33,36,38,41,43,46,48,
+    51,53,56,58,61,63,66,68,71,73,76,78,81,83,86,88,91,93,96,98,
+    101,103,106,108,111,113,116,118,121,123,
+    126,128,131,133,136,138,141,143,146,148,151,153,156,158,161,163,166,168,171,173,
+    176,178,181,183,186,188,191,193,196,198,201,203,206,208,211,213,216,218,221,223,
+    226,228,231,233,236,238,241,243,246,248
+  };

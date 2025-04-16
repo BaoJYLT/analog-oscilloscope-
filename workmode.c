@@ -20,20 +20,69 @@ void realtime_mode(){
     }
 }
 
+/**
+ * 波形发生
+ */
 void generator_mode(){
-    switch (submode){
-        case SINM:
-            
-            break;
-        case TRIANNGULARM:
-            break;
-        case RECTANGULARM:
-            break;
-        case SAWTOOTHM:
-            break;
-        default:
-            break;
-    }
+    if(workmode == GENERATOR)
+    if(submode == SINM){
+		sinusoidalWave();
+	}else if(submode == TRIANNGULARM){
+		triangularWave();
+	}else if(submode == RECTANGULARM){
+		rectangularWave();
+	}else if(submode == SAWTOOTHM){
+		sawtoothWave();
+	}
+}
+/*
+void chooseGenerator(void){
+	if(working_parameter == 0){
+		sinusoidalWave();
+	}else if(working_parameter == 1){
+		triangularWave();
+	}else if(working_parameter == 2){
+		rectangularWave();
+	}else if(working_parameter == 3){
+		sawtoothWave();
+	}
+}
+*/
+
+void sinusoidalWave(void){
+	generator_timer += working_frequency;
+	if(generator_timer >= WAVE_TABLE_LEN){
+		generator_timer = 0;
+	}
+	generator_result = sinWaveTable[generator_timer];
+	generator_result = BASE_LINE + generator_result * working_amplitude / 255;
+}
+
+void triangularWave(void){
+	generator_timer += working_frequency;
+	if(generator_timer >= WAVE_TABLE_LEN){
+		generator_timer = 0;
+	}
+	generator_result = triWaveTable[generator_timer];
+	generator_result = BASE_LINE + generator_result * working_amplitude / 255;
+}
+
+void rectangularWave(void){
+	generator_timer += working_frequency;
+	if(generator_timer >= WAVE_TABLE_LEN){
+		generator_timer = 0;
+	}
+	generator_result = rectWaveTable[generator_timer];
+	generator_result = BASE_LINE + generator_result * working_amplitude / 255;
+}
+
+void sawtoothWave(void){
+	generator_timer += working_frequency;
+	if(generator_timer >= WAVE_TABLE_LEN){
+		generator_timer = 0;
+	}
+	generator_result = sawWaveTable[generator_timer];
+	generator_result = BASE_LINE + generator_result * working_amplitude / 255;
 }
 
 /**
@@ -54,72 +103,68 @@ void recall_mode(){
         address_6264 ++;        
     }
 }
-void measure_mode(){
 
+/**
+ * 测量模式
+ * - amplitude测量
+ * - frequency测量
+ * 会需要调用到void sendByte_595(unsigned char byte_595) 向74HC595发送一个字节的数据
+ * 
+ */
+void measure_mode(){
+    typedef enum{ FALLING, RISING} SingnalState;
+    unsigned char Sig_data, Sig_pre_data;
+    unsigned char Sig_highest, Sig_lowest;
+    unsigned char Sig_amp, Sig_freq, Sig_Period;
+    SignalState Sig_trend = RISING;
+    static unsigned char stable_count = 0;
+    unsigned int measure_timer =  0;
+    // 初始化 得到转换后的一个字节
+    if(workmode == MEASURE){ //【尚不确定需要while循环，应该是在时间中断里面不断被keydetection调用，可能不需要这个循环】
+        measure_timer ++;
+        init_ad();
+        ADC_CONTR |= 0X08;  //start ADC工作
+        while(!(ADC_CONTR & 0x10)); // 等待转换完成的flag
+        Sig_pre_data = Sig_data;
+        Sig_data = ADC_RES;
+
+        if((Sig_data > Sig_pre_data) && (Sig_trend == FALLING)){
+            if(stable_count == 0){
+                Sig_lowest = Sig_data;
+            }
+            if(++ stable_count >= 5){
+                Sig_trend = RISING;
+                stable_count = 0;
+                Sig_freq = 2000 / measure_timer;//需要根据我们的采样率重新设计
+                measure_timer = 0;
+            }
+        }else if((Sig_data < Sig_pre_data) && (Sig_trend == RISING)){
+            if(stable_count == 0){
+                Sig_highest = Sig_data;
+            }
+            if(++ stable_count >= 5){
+                Sig_trend = FALLING;
+                stable_count = 0;
+                Sig_amp = (int)(Sig_highest - Sig_lowest);  
+            }
+        }
+        Sig_pre_data = Sig_data;
+        
+        if(workmode == MEASURE){
+            if (submode == MEASUREAMP){
+                sendByte_595(Sig_amp);
+                display_digits();
+            }
+            else if(submode == MEASUREFREQ){
+                sendByte_595(Sig_freq);
+                display_digits();
+            }
+        }
 }
 
 /**
  * 默认状态（存储器内容+数码管显示）
  */
 void default_mode(){
-
-}
-
-
-// by yr
-typedef enum {FALLING_PHASE, RISING_PHASE} SignalPhase;
-
-void processADData(void) {
-    static uint8_t stableCount = 0;
-    
-    if (AD_trend == RISING_PHASE) {
-        if (AD_data > AD_pre_data) {
-            if (stableCount == 0) AD_lowest = AD_data;
-            if (++stableCount >= 5) {
-                AD_trend = FALLING_PHASE;
-                AD_frequency = 2000 / AD_timer;
-                AD_timer = stableCount = 0;
-            }
-        } else {
-            stableCount = 0;
-        }
-    } else {
-        if (AD_data < AD_pre_data) {
-            if (stableCount == 0) AD_highest = AD_data;
-            if (++stableCount >= 5) {
-                AD_trend = RISING_PHASE;
-                AD_amplitude = (int)((AD_highest - AD_lowest) * 1.95);
-                stableCount = 0;
-            }
-        } else {
-            stableCount = 0;
-        }
-    }
-}
-
-void getAD(void) {
-    /* ADC启动配置 */
-    ADC_CONTR |= (1 << 3);  // 使用位偏移替代十六进制值
-    for(volatile uint8_t dly = 4; dly > 0; dly--);  // 改变循环写法
-    
-    /* 等待转换完成 */
-    while (!(ADC_CONTR & (1 << 4)) {  // 使用位检测替代等于判断
-        // 空等待
-    }
-    
-    /* 清除标志位 */
-    ADC_CONTR &= ~((1 << 4) | (1 << 3));  // 显式清除两个标志位
-    AD_data = ADC_RES;  // 保持数据读取不变
-    
-    /* 状态切换 */
-    CHECK_4 ^= 1;  // 使用异或操作简化取反
-    
-    if(working_mode == ANALYZE_MODE) {  // 使用有意义的模式定义
-        AD_timer++;
-        
-        /* 重构趋势检测逻辑 */
-        processADData();
-        
-        AD_pre_data = AD_data;  // 最后更新前值
-    }
+    display_digits();
 }

@@ -5,6 +5,7 @@
 #ifndef __HEADERS_H__
 #define __HEADERS_H__
 
+#include <stdint.h>
 #include <STC12C5A60S2.H>
 #include <INTRINS.H>
 #include <REG51.H>
@@ -25,11 +26,16 @@
 #define TRIANNGULARM 3
 #define RECTANGULARM 2
 #define SAWTOOTHM 1
+// submode 测量模式下的测量对象选择
+#define MEASUREFREQ 2   // 频率测量
+#define MEASUREAMP 1    // 幅值测量
 // 地址数据复用
 #define ADDR_HIGH P2
 #define ADDR_LOW P0
 #define WRITE_RAM 1
 #define READ_RAM 2  //关于6264RAM的 读写控制信号宏定义只适用于区分，大概是先写后读
+// 测量抖动阈值
+#define SIGNAL_JITTER_THRESHOLD 5
 
 sbit KEY1 = P3^4;
 sbit KEY2 = P3^5;
@@ -52,6 +58,12 @@ sfr ADC_RES = 0xbd;
 sfr ADC_RESL = 0xbe;
 sfr AUXR1 = 0xa2;
 
+// 数码管码表
+
+
+// 数码管模式表
+
+
 extern unsigned int workmode;  //工作模式
 extern unsigned int submode ;   //波形发生模式
 extern volatile bit Timer0Flag ;
@@ -59,10 +71,12 @@ extern volatile bit Timer0Flag ;
 extern void initIE();
 extern void initTimer0();
 extern void interruptTimer0() interrupt 0xb;
+extern void initTimer1();
+extern void interruptTimer1() interrupt 0x1b;
 extern void delay_T(unsigned int ms);
-// extern void sendByte_595(unsigned char byte_595);
-// extern void keyDetection();
-// extern void modeSelection();
+extern void sendByte_595(unsigned char byte_595);
+extern void keyDetection();
+extern void modeSelection();
 
 extern void realtime_mode();// mode
 extern void generator_mode();
@@ -75,3 +89,11 @@ extern void writeRAM_6264(unsigned int address, unsigned char data);
 // extern void readRAM_6264(unsigned int address,unsigned char data);
 extern void realtime_out_0832(unsigned char outputNum);
 extern void readRAM_6264(unsigned int address);
+extern void display_digits();
+
+#define WAVE_TABLE_LEN 100
+
+extern const unsigned char code sinWaveTable[WAVE_TABLE_LEN];
+extern const unsigned char code triWaveTable[WAVE_TABLE_LEN];
+extern const unsigned char code rectWaveTable[WAVE_TABLE_LEN];
+extern const unsigned char code sawWaveTable[WAVE_TABLE_LEN];
